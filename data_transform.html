@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Transform Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1d2433; --muted:#667085; --line:#e3e7ee;
+    --accent:#3b5bdb; --accent-soft:#edf2ff; --ok:#2b8a3e; --ok-soft:#ebfbee;
+    --warn:#e8590c; --warn-soft:#fff4e6; --danger:#c92a2a; --danger-soft:#fff5f5;
+    --new:#fff9db; --new-head:#ffe066;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:15px;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  header .logo{width:46px;height:46px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:20px}
+  header h1{margin:0;font-size:22px}
+  header p{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:10px}
+  .step{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:inline-grid;place-items:center;font-size:13px}
+  .locked{opacity:.45;pointer-events:none;filter:grayscale(.4)}
+  .drop{border:2px dashed #c5cdda;border-radius:var(--radius);padding:30px 16px;text-align:center;cursor:pointer;transition:.15s;background:#fafbfd}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop b{color:var(--accent)}
+  .drop small{color:var(--muted)}
+  .fileinfo{display:none;margin-top:14px;gap:12px;flex-wrap:wrap;align-items:center}
+  .chip{background:var(--accent-soft);color:var(--accent);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:500}
+  select,input[type=text],input[type=number]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+  input[type=number]{width:80px}
+  .btn{font:inherit;font-weight:500;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 16px;border-radius:9px;cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{background:#f1f3f7}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#324cc0}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.ok:hover{background:#237032}
+  .btn.danger{color:var(--danger);border-color:#f3c4c4}
+  .btn.danger:hover{background:var(--danger-soft)}
+  .btn.sm{padding:4px 10px;font-size:13px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+  .tab{border:none;background:none;font:inherit;padding:10px 16px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;font-weight:500}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .panel{display:none}
+  .panel.active{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+  @media (max-width:760px){.panel.active{grid-template-columns:1fr}}
+  .picker{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .picker .bar{display:flex;gap:6px;padding:8px;background:#fafbfd;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}
+  .picker .bar input{flex:1;min-width:120px}
+  .picker .list{max-height:260px;overflow:auto;padding:4px 0}
+  .picker label{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:14px}
+  .picker label:hover{background:#f5f7fb}
+  .picker .count{padding:6px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);background:#fafbfd}
+  .tag{font-size:11px;padding:1px 7px;border-radius:999px;margin-left:auto}
+  .tag.new{background:var(--new-head);color:#5c4400}
+  .tag.n{background:#eef0f4;color:var(--muted)}
+  .opts{display:flex;flex-direction:column;gap:12px}
+  .opt label.t{display:block;font-weight:500;margin-bottom:4px;font-size:14px}
+  .opt .hint{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .radio{display:flex;flex-direction:column;gap:4px;font-size:14px}
+  .note{background:var(--accent-soft);border-radius:9px;padding:10px 12px;font-size:13.5px;color:#2c3e8f}
+  .queue{display:flex;flex-direction:column;gap:8px}
+  .qitem{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .qitem .num{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0;color:#fff}
+  .qitem .num.mean{background:#3b5bdb}.qitem .num.dummy{background:#7048e8}.qitem .num.reverse{background:#e8590c}.qitem .num.label{background:#0c8599}
+  .maprows{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto;padding-right:4px}
+  .maprow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,2fr) auto;gap:6px;align-items:center}
+  .maprow input{width:100%;min-width:0}
+  .maprow .eq{color:var(--muted);font-weight:600}
+  .maphead{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,2fr) auto;gap:6px;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .btn.icon{padding:4px 10px;min-width:34px;justify-content:center}
+  .qitem .body{flex:1;font-size:14px;min-width:0}
+  .qitem .body small{color:var(--muted);word-break:break-word}
+  .empty{color:var(--muted);font-size:14px;padding:10px 0}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:560px}
+  table{border-collapse:collapse;font-size:13.5px;min-width:100%}
+  th,td{padding:7px 12px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap;text-align:left}
+  th{position:sticky;top:0;background:#f1f3f7;font-weight:600;z-index:1}
+  th.rn,td.rn{color:var(--muted);text-align:right;background:#fafbfd;position:sticky;left:0}
+  th.rn{z-index:2}
+  th.newc{background:var(--new-head)}
+  td.newc{background:var(--new)}
+  td.na{color:#b0b7c3}
+  .log{margin-top:14px;background:#1d2433;color:#d7e0f0;border-radius:10px;padding:12px 14px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;white-space:pre-wrap;max-height:220px;overflow:auto}
+  .log .w{color:#ffc078}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1d2433;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;transition:.25s;z-index:99;max-width:calc(100% - 32px)}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.err{background:var(--danger)}
+  #toast.ok{background:var(--ok)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Tx</div>
+    <div>
+      <h1>เครื่องมือ Transform ข้อมูล (แบบ SPSS)</h1>
+      <p>Compute ค่าเฉลี่ย • สร้างตัวแปร Dummy • Reverse Code — ทำงานในเบราว์เซอร์ ข้อมูลไม่ถูกส่งออกไปที่ใด</p>
+    </div>
+  </header>
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <h2><span class="step">1</span> อัปโหลดไฟล์ Excel</h2>
+    <div class="drop" id="drop">
+      <div style="font-size:30px">📂</div>
+      <div><b>คลิกเพื่อเลือกไฟล์</b> หรือ ลากไฟล์มาวางที่นี่</div>
+      <small>รองรับ .xlsx, .xls, .csv — แถวแรกต้องเป็นชื่อตัวแปร</small>
+      <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+    </div>
+    <div class="fileinfo" id="fileinfo">
+      <span class="chip" id="fname"></span>
+      <span class="row">ชีต: <select id="sheet"></select></span>
+      <span class="chip" id="fsize"></span>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card locked" id="step2">
+    <h2><span class="step">2</span> เลือกคำสั่ง Transform</h2>
+    <div class="tabs">
+      <button class="tab active" data-tab="mean">📊 Compute ค่าเฉลี่ย / ผลรวม</button>
+      <button class="tab" data-tab="dummy">🔢 สร้างตัวแปร Dummy</button>
+      <button class="tab" data-tab="reverse">🔁 Reverse Code</button>
+      <button class="tab" data-tab="label">🏷️ แปลงตัวเลขเป็นข้อความ</button>
+    </div>
+
+    <!-- MEAN -->
+    <div class="panel active" id="panel-mean">
+      <div>
+        <div class="opt"><label class="t">เลือกตัวแปรที่จะนำมาคำนวณ</label></div>
+        <div class="picker" id="pick-mean"></div>
+      </div>
+      <div class="opts">
+        <div class="opt">
+          <label class="t">ชื่อตัวแปรใหม่ (Target Variable)</label>
+          <input type="text" id="mean-name" placeholder="เช่น mean_satisfy" style="width:100%">
+        </div>
+        <div class="opt">
+          <label class="t">ฟังก์ชัน</label>
+          <select id="mean-fn">
+            <option value="mean">MEAN — ค่าเฉลี่ย</option>
+            <option value="sum">SUM — ผลรวม</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label class="t">การจัดการค่าว่าง (Missing)</label>
+          <select id="mean-miss">
+            <option value="any">คำนวณจากค่าที่มีอยู่ (เหมือน MEAN() ใน SPSS)</option>
+            <option value="all">ต้องมีค่าครบทุกตัวแปร มิฉะนั้นเป็นค่าว่าง</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label class="t">ทศนิยม</label>
+          <select id="mean-dec">
+            <option value="0">0</option><option value="1">1</option>
+            <option value="2" selected>2</option><option value="3">3</option>
+            <option value="4">4</option><option value="-1">ไม่ปัดเศษ</option>
+          </select>
+        </div>
+        <div class="note">💡 ถ้ามีข้อคำถามเชิงลบ ให้เพิ่มคำสั่ง <b>Reverse Code</b> ก่อน แล้วเลือกตัวแปรที่กลับค่าแล้ว (เช่น q3_r) มาหาค่าเฉลี่ย — ตัวแปรจากคำสั่งก่อนหน้าจะปรากฏในรายการพร้อมป้าย <span class="tag new" style="margin:0">ใหม่</span></div>
+        <div><button class="btn primary" id="add-mean">＋ เพิ่มลงรายการคำสั่ง</button></div>
+      </div>
+    </div>
+
+    <!-- DUMMY -->
+    <div class="panel" id="panel-dummy">
+      <div>
+        <div class="opt"><label class="t">เลือกตัวแปรเชิงกลุ่ม (เลือกได้หลายตัวพร้อมกัน)</label></div>
+        <div class="picker" id="pick-dummy"></div>
+      </div>
+      <div class="opts">
+        <div class="opt">
+          <label class="t">กลุ่มอ้างอิง (Reference Category)</label>
+          <div class="radio">
+            <label><input type="radio" name="ref" value="first" checked> ตัดกลุ่มแรกออก (k−1 ตัวแปร) — ใช้กับ Regression</label>
+            <label><input type="radio" name="ref" value="last"> ตัดกลุ่มสุดท้ายออก (k−1 ตัวแปร)</label>
+            <label><input type="radio" name="ref" value="none"> สร้างครบทุกกลุ่ม (k ตัวแปร)</label>
+          </div>
+          <div class="hint">ค่าจะถูกเรียงจากน้อยไปมาก เช่น 1,2,3 → กลุ่มแรกคือ 1</div>
+        </div>
+        <div class="opt">
+          <label class="t">ตัวคั่นชื่อตัวแปร</label>
+          <input type="text" id="dummy-sep" value="_" style="width:80px">
+          <div class="hint">ตัวอย่าง: ตัวแปร <code>edu</code> ค่า 2 → <code>edu_2</code> (1 = ใช่, 0 = ไม่ใช่, ค่าว่างคงเป็นค่าว่าง)</div>
+        </div>
+        <div><button class="btn primary" id="add-dummy">＋ เพิ่มลงรายการคำสั่ง</button></div>
+      </div>
+    </div>
+
+    <!-- REVERSE -->
+    <div class="panel" id="panel-reverse">
+      <div>
+        <div class="opt"><label class="t">เลือกตัวแปรที่ต้องการกลับค่า (เลือกได้หลายตัวพร้อมกัน)</label></div>
+        <div class="picker" id="pick-reverse"></div>
+      </div>
+      <div class="opts">
+        <div class="opt">
+          <label class="t">ช่วงของสเกล</label>
+          <div class="row">
+            ต่ำสุด <input type="number" id="rev-min" value="1">
+            สูงสุด <input type="number" id="rev-max" value="5">
+            <button class="btn sm" id="rev-detect">ตรวจจับอัตโนมัติ</button>
+          </div>
+          <div class="hint" id="rev-preview">5→1, 4→2, 3→3, 2→4, 1→5 (สูตร: ค่าใหม่ = ต่ำสุด + สูงสุด − ค่าเดิม)</div>
+        </div>
+        <div class="opt">
+          <label class="t">ผลลัพธ์</label>
+          <div class="radio">
+            <label><input type="radio" name="revmode" value="new" checked> สร้างตัวแปรใหม่ (Into Different Variables)</label>
+            <label><input type="radio" name="revmode" value="replace"> แทนที่ตัวแปรเดิม (Into Same Variables)</label>
+          </div>
+        </div>
+        <div class="opt" id="rev-suffix-box">
+          <label class="t">ส่วนต่อท้ายชื่อตัวแปรใหม่</label>
+          <input type="text" id="rev-suffix" value="_r" style="width:100px">
+        </div>
+        <div class="hint">ค่าที่อยู่นอกช่วงหรือไม่ใช่ตัวเลข จะกลายเป็นค่าว่าง (System Missing)</div>
+        <div><button class="btn primary" id="add-reverse">＋ เพิ่มลงรายการคำสั่ง</button></div>
+      </div>
+    </div>
+
+    <!-- VALUE LABEL -->
+    <div class="panel" id="panel-label">
+      <div>
+        <div class="opt"><label class="t">เลือกตัวแปร (เช่น เพศ) — เลือกหลายตัวได้ถ้าใช้รหัสชุดเดียวกัน</label></div>
+        <div class="picker" id="pick-label"></div>
+      </div>
+      <div class="opts">
+        <div class="opt">
+          <label class="t">กำหนดค่า → ข้อความ</label>
+          <div class="maphead"><span>ค่าเดิม</span><span>&nbsp;&nbsp;</span><span>ข้อความใหม่</span><span style="width:34px"></span></div>
+          <div class="maprows" id="maprows"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn sm" id="map-add">＋ เพิ่มแถว</button>
+            <button class="btn sm" id="map-fill">ดึงค่าจากข้อมูล</button>
+            <button class="btn sm danger" id="map-clear">ล้างทั้งหมด</button>
+          </div>
+          <div class="hint">"ดึงค่าจากข้อมูล" จะใส่ค่าทั้งหมดที่พบในตัวแปรที่เลือกให้อัตโนมัติ เหลือแค่พิมพ์ข้อความ</div>
+        </div>
+        <div class="opt">
+          <label class="t">ผลลัพธ์</label>
+          <div class="radio">
+            <label><input type="radio" name="labmode" value="new" checked> สร้างตัวแปรใหม่</label>
+            <label><input type="radio" name="labmode" value="replace"> แทนที่ตัวแปรเดิม</label>
+          </div>
+        </div>
+        <div class="opt" id="lab-suffix-box">
+          <label class="t">ส่วนต่อท้ายชื่อตัวแปรใหม่</label>
+          <input type="text" id="lab-suffix" value="_label" style="width:120px">
+        </div>
+        <div class="opt">
+          <label class="t">ค่าที่ไม่ได้กำหนดไว้</label>
+          <select id="lab-else">
+            <option value="copy">คงค่าเดิมไว้ (ELSE = COPY)</option>
+            <option value="blank">เปลี่ยนเป็นค่าว่าง</option>
+          </select>
+        </div>
+        <div><button class="btn primary" id="add-label">＋ เพิ่มลงรายการคำสั่ง</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card locked" id="step3">
+    <h2><span class="step">3</span> รายการคำสั่งและประมวลผล</h2>
+    <div class="queue" id="queue"></div>
+    <div class="actions">
+      <button class="btn primary" id="run">▶ ประมวลผล</button>
+      <button class="btn ok" id="save" disabled>💾 บันทึกเป็น Excel</button>
+      <button class="btn danger" id="reset">↺ รีเซ็ตหน้า</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card hidden" id="result">
+    <h2><span class="step">✓</span> ตัวอย่างผลลัพธ์ 20 แถวแรก</h2>
+    <div class="stats" id="stats"></div>
+    <div class="row" style="margin-bottom:10px;font-size:14px">
+      <label><input type="checkbox" id="onlynew"> แสดงเฉพาะตัวแปรที่สร้างใหม่ / ถูกแก้ไข</label>
+    </div>
+    <div class="tablewrap"><table id="table"></table></div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const S = {
+  wb:null, fileName:'', rows:[], cols:[], uniq:{},
+  tasks:[], avail:[], availNew:new Set(), result:null,
+  sel:{mean:new Set(), dummy:new Set(), reverse:new Set(), label:new Set()}
+};
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function isBlank(v){return v===null||v===undefined||String(v).trim()===''}
+function toNum(v){
+  if(v===null||v===undefined) return null;
+  if(typeof v==='number') return isFinite(v)?v:null;
+  if(typeof v==='boolean') return v?1:0;
+  if(v instanceof Date) return null;
+  const s=String(v).trim().replace(/,/g,''); if(s==='') return null;
+  const n=Number(s); return isFinite(n)?n:null;
+}
+function round(v,d){if(d<0) return v; const p=Math.pow(10,d); return Math.round((v+Number.EPSILON)*p)/p}
+function cmpVal(a,b){const x=toNum(a),y=toNum(b); if(x!==null&&y!==null) return x-y; return String(a).localeCompare(String(b),'th')}
+function fmt(v){
+  if(isBlank(v)) return null;
+  if(v instanceof Date) return v.toLocaleDateString('th-TH');
+  if(typeof v==='number' && !Number.isInteger(v)) return String(round(v,6));
+  return String(v);
+}
+let tt; function toast(msg,type=''){const t=$('toast'); t.textContent=msg; t.className='show '+type; clearTimeout(tt); tt=setTimeout(()=>t.className=type,2800)}
+
+/* ---------- file loading ---------- */
+const drop=$('drop'), fileIn=$('file');
+drop.onclick=()=>fileIn.click();
+fileIn.onchange=e=>{if(e.target.files[0]) handleFile(e.target.files[0])};
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])});
+
+function handleFile(file){
+  if(typeof XLSX==='undefined'){toast('โหลดไลบรารี SheetJS ไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ต','err');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      S.wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      S.fileName=file.name.replace(/\.[^.]+$/,'');
+      $('fname').textContent='📄 '+file.name;
+      $('sheet').innerHTML=S.wb.SheetNames.map(n=>`<option>${esc(n)}</option>`).join('');
+      $('fileinfo').style.display='flex';
+      loadSheet(S.wb.SheetNames[0]);
+    }catch(err){toast('อ่านไฟล์ไม่ได้: '+err.message,'err')}
+  };
+  reader.readAsArrayBuffer(file);
+}
+$('sheet').onchange=e=>{
+  if(S.tasks.length && !confirm('การเปลี่ยนชีตจะล้างรายการคำสั่งทั้งหมด ต้องการดำเนินการต่อหรือไม่?')){e.target.value=S.curSheet;return}
+  loadSheet(e.target.value);
+};
+
+function loadSheet(name){
+  const rows=XLSX.utils.sheet_to_json(S.wb.Sheets[name],{defval:null,raw:true});
+  if(!rows.length){toast('ชีตนี้ไม่มีข้อมูล','err');return}
+  S.curSheet=name; S.rows=rows; S.cols=Object.keys(rows[0]);
+  S.uniq={};
+  S.cols.forEach(c=>{S.uniq[c]=new Set(rows.map(r=>r[c]).filter(v=>!isBlank(v)).map(v=>String(v).trim())).size});
+  S.tasks=[]; Object.values(S.sel).forEach(s=>s.clear());
+  $('fsize').textContent=`${rows.length.toLocaleString()} แถว × ${S.cols.length} ตัวแปร`;
+  $('step2').classList.remove('locked'); $('step3').classList.remove('locked');
+  tasksChanged();
+  toast('โหลดข้อมูลสำเร็จ','ok');
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+b.dataset.tab));
+});
+
+/* ---------- column pickers ---------- */
+function buildPicker(key){
+  const box=$('pick-'+key);
+  box.innerHTML=`<div class="bar">
+      <input type="text" class="search" placeholder="🔍 ค้นหาตัวแปร...">
+      <button class="btn sm all">เลือกทั้งหมด</button>
+      <button class="btn sm none">ล้าง</button>
+    </div><div class="list"></div><div class="count"></div>`;
+  box.querySelector('.search').oninput=()=>renderPicker(key);
+  box.querySelector('.all').onclick=()=>{visibleCols(key).forEach(c=>S.sel[key].add(c));renderPicker(key)};
+  box.querySelector('.none').onclick=()=>{S.sel[key].clear();renderPicker(key)};
+}
+function visibleCols(key){
+  const q=$('pick-'+key).querySelector('.search').value.trim().toLowerCase();
+  return S.avail.filter(c=>!q||c.toLowerCase().includes(q));
+}
+function renderPicker(key){
+  const box=$('pick-'+key), list=box.querySelector('.list');
+  [...S.sel[key]].forEach(c=>{if(!S.avail.includes(c)) S.sel[key].delete(c)});
+  const cols=visibleCols(key);
+  list.innerHTML=cols.length?cols.map((c,i)=>{
+    let tag='';
+    if(S.availNew.has(c)) tag='<span class="tag new">ใหม่</span>';
+    else if((key==='dummy'||key==='label') && S.uniq[c]!==undefined) tag=`<span class="tag n">${S.uniq[c]} ค่า</span>`;
+    return `<label><input type="checkbox" data-c="${esc(c)}" ${S.sel[key].has(c)?'checked':''}> <span>${esc(c)}</span>${tag}</label>`;
+  }).join(''):'<div class="empty" style="padding:10px 12px">ไม่พบตัวแปร</div>';
+  list.querySelectorAll('input').forEach(cb=>cb.onchange=()=>{
+    cb.checked?S.sel[key].add(cb.dataset.c):S.sel[key].delete(cb.dataset.c);
+    box.querySelector('.count').textContent=`เลือกแล้ว ${S.sel[key].size} ตัวแปร`;
+  });
+  box.querySelector('.count').textContent=`เลือกแล้ว ${S.sel[key].size} ตัวแปร`;
+}
+['mean','dummy','reverse','label'].forEach(buildPicker);
+
+/* ---------- reverse helpers ---------- */
+function revPreview(){
+  const mn=Number($('rev-min').value), mx=Number($('rev-max').value);
+  if(!isFinite(mn)||!isFinite(mx)||mn>=mx){$('rev-preview').textContent='⚠ ค่าต่ำสุดต้องน้อยกว่าค่าสูงสุด';return}
+  const pairs=[]; if(Number.isInteger(mn)&&Number.isInteger(mx)&&mx-mn<=10){for(let v=mx;v>=mn;v--) pairs.push(`${v}→${mn+mx-v}`)}
+  $('rev-preview').textContent=(pairs.length?pairs.join(', ')+' ':'')+'(สูตร: ค่าใหม่ = ต่ำสุด + สูงสุด − ค่าเดิม)';
+}
+$('rev-min').oninput=$('rev-max').oninput=revPreview;
+document.querySelectorAll('input[name=revmode]').forEach(r=>r.onchange=()=>{
+  $('rev-suffix-box').style.display=document.querySelector('input[name=revmode]:checked').value==='new'?'':'none';
+});
+$('rev-detect').onclick=()=>{
+  const cols=[...S.sel.reverse]; if(!cols.length){toast('กรุณาเลือกตัวแปรก่อน','err');return}
+  const preview=runPipeline(S.tasks).data; let mn=Infinity,mx=-Infinity;
+  preview.forEach(r=>cols.forEach(c=>{const v=toNum(r[c]); if(v!==null){mn=Math.min(mn,v);mx=Math.max(mx,v)}}));
+  if(mn===Infinity){toast('ไม่พบค่าตัวเลขในตัวแปรที่เลือก','err');return}
+  $('rev-min').value=mn; $('rev-max').value=mx; revPreview();
+  toast(`ตรวจพบช่วง ${mn} – ${mx}`,'ok');
+};
+
+/* ---------- value label rows ---------- */
+function addMapRow(v='',l=''){
+  const row=document.createElement('div'); row.className='maprow';
+  row.innerHTML=`<input type="text" class="mv" placeholder="เช่น 1"><span class="eq">=</span><input type="text" class="ml" placeholder="เช่น ชาย"><button class="btn sm icon danger" title="ลบแถว">✕</button>`;
+  row.querySelector('.mv').value=v; row.querySelector('.ml').value=l;
+  row.querySelector('button').onclick=()=>{row.remove(); if(!$('maprows').children.length) addMapRow();};
+  $('maprows').appendChild(row); return row;
+}
+function resetMapRows(){$('maprows').innerHTML=''; addMapRow('1','ชาย'); addMapRow('2','หญิง');}
+resetMapRows();
+$('map-add').onclick=()=>{addMapRow().querySelector('.mv').focus(); const m=$('maprows'); m.scrollTop=m.scrollHeight;};
+$('map-clear').onclick=()=>{$('maprows').innerHTML=''; addMapRow();};
+$('map-fill').onclick=()=>{
+  const cols=[...S.sel.label]; if(!cols.length){toast('กรุณาเลือกตัวแปรก่อน','err');return}
+  const data=runPipeline(S.tasks).data, vals=new Set();
+  data.forEach(r=>cols.forEach(c=>{if(!isBlank(r[c])) vals.add(String(r[c]).trim())}));
+  if(!vals.size){toast('ไม่พบค่าในตัวแปรที่เลือก','err');return}
+  if(vals.size>50 && !confirm(`พบ ${vals.size} ค่า ต้องการดึงทั้งหมดหรือไม่?`)) return;
+  const old={}; $('maprows').querySelectorAll('.maprow').forEach(r=>{const v=r.querySelector('.mv').value.trim(); if(v) old[v]=r.querySelector('.ml').value;});
+  $('maprows').innerHTML=''; [...vals].sort(cmpVal).forEach(v=>addMapRow(v,old[v]||''));
+  toast(`ดึงค่าได้ ${vals.size} ค่า`,'ok');
+};
+document.querySelectorAll('input[name=labmode]').forEach(r=>r.onchange=()=>{
+  $('lab-suffix-box').style.display=document.querySelector('input[name=labmode]:checked').value==='new'?'':'none';
+});
+
+/* ---------- add tasks ---------- */
+$('add-mean').onclick=()=>{
+  const cols=[...S.sel.mean], name=$('mean-name').value.trim();
+  if(cols.length<1){toast('กรุณาเลือกตัวแปรอย่างน้อย 1 ตัว','err');return}
+  if(!name){toast('กรุณาตั้งชื่อตัวแปรใหม่','err');$('mean-name').focus();return}
+  if(S.avail.includes(name) && !confirm(`มีตัวแปร "${name}" อยู่แล้ว ต้องการเขียนทับหรือไม่?`)) return;
+  S.tasks.push({type:'mean',cols,name,fn:$('mean-fn').value,
+    minValid:$('mean-miss').value==='all'?cols.length:1,decimals:Number($('mean-dec').value)});
+  S.sel.mean.clear(); $('mean-name').value='';
+  tasksChanged(); toast('เพิ่มคำสั่ง Compute แล้ว','ok');
+};
+$('add-dummy').onclick=()=>{
+  const cols=[...S.sel.dummy];
+  if(!cols.length){toast('กรุณาเลือกตัวแปรอย่างน้อย 1 ตัว','err');return}
+  const many=cols.filter(c=>(S.uniq[c]||0)>20);
+  if(many.length && !confirm(`ตัวแปร ${many.join(', ')} มีมากกว่า 20 ค่า จะได้ Dummy จำนวนมาก ต้องการดำเนินการต่อหรือไม่?`)) return;
+  S.tasks.push({type:'dummy',cols,ref:document.querySelector('input[name=ref]:checked').value,sep:$('dummy-sep').value});
+  S.sel.dummy.clear(); tasksChanged(); toast('เพิ่มคำสั่ง Dummy แล้ว','ok');
+};
+$('add-reverse').onclick=()=>{
+  const cols=[...S.sel.reverse], mn=Number($('rev-min').value), mx=Number($('rev-max').value);
+  const mode=document.querySelector('input[name=revmode]:checked').value, suffix=$('rev-suffix').value;
+  if(!cols.length){toast('กรุณาเลือกตัวแปรอย่างน้อย 1 ตัว','err');return}
+  if(!isFinite(mn)||!isFinite(mx)||mn>=mx){toast('ช่วงสเกลไม่ถูกต้อง','err');return}
+  if(mode==='new' && !suffix){toast('กรุณาระบุส่วนต่อท้ายชื่อตัวแปร','err');return}
+  S.tasks.push({type:'reverse',cols,min:mn,max:mx,mode,suffix});
+  S.sel.reverse.clear(); tasksChanged(); toast('เพิ่มคำสั่ง Reverse Code แล้ว','ok');
+};
+
+$('add-label').onclick=()=>{
+  const cols=[...S.sel.label]; if(!cols.length){toast('กรุณาเลือกตัวแปรอย่างน้อย 1 ตัว','err');return}
+  const map=[]; const seen=new Set(); let dup=false;
+  $('maprows').querySelectorAll('.maprow').forEach(r=>{
+    const v=r.querySelector('.mv').value.trim(), l=r.querySelector('.ml').value.trim();
+    if(v==='') return; if(seen.has(v)) dup=true; seen.add(v); map.push([v,l]);
+  });
+  if(!map.length){toast('กรุณากำหนดค่าอย่างน้อย 1 คู่','err');return}
+  if(dup){toast('มีค่าเดิมซ้ำกัน กรุณาตรวจสอบ','err');return}
+  const mode=document.querySelector('input[name=labmode]:checked').value, suffix=$('lab-suffix').value;
+  if(mode==='new' && !suffix){toast('กรุณาระบุส่วนต่อท้ายชื่อตัวแปร','err');return}
+  S.tasks.push({type:'label',cols,map,mode,suffix,els:$('lab-else').value});
+  S.sel.label.clear(); tasksChanged(); toast('เพิ่มคำสั่งแปลงเป็นข้อความแล้ว','ok');
+};
+
+/* ---------- queue ---------- */
+function describe(t){
+  if(t.type==='mean') return {title:`COMPUTE <b>${esc(t.name)}</b> = ${t.fn.toUpperCase()}(${t.cols.length} ตัวแปร)`,
+    sub:`${t.cols.map(esc).join(', ')} • ${t.minValid>1?'ต้องครบทุกตัว':'ข้าม missing'} • ทศนิยม ${t.decimals<0?'ไม่ปัด':t.decimals}`};
+  if(t.type==='dummy') return {title:`DUMMY ${t.cols.length} ตัวแปร`,
+    sub:`${t.cols.map(esc).join(', ')} • ${{first:'ตัดกลุ่มแรก (k−1)',last:'ตัดกลุ่มสุดท้าย (k−1)',none:'ครบทุกกลุ่ม (k)'}[t.ref]}`};
+  if(t.type==='label') return {title:`VALUE LABEL ${t.cols.length} ตัวแปร (${t.map.length} ค่า)`,
+    sub:`${t.cols.map(esc).join(', ')} • ${t.map.map(([v,l])=>esc(v)+' = '+esc(l||'(ว่าง)')).join(', ')} • ${t.mode==='new'?'สร้างใหม่ต่อท้าย "'+esc(t.suffix)+'"':'แทนที่ตัวแปรเดิม'}`};
+  return {title:`REVERSE CODE ${t.cols.length} ตัวแปร (${t.min}–${t.max})`,
+    sub:`${t.cols.map(esc).join(', ')} • ${t.mode==='new'?'สร้างใหม่ต่อท้าย "'+esc(t.suffix)+'"':'แทนที่ตัวแปรเดิม'}`};
+}
+function renderQueue(){
+  const q=$('queue');
+  if(!S.tasks.length){q.innerHTML='<div class="empty">ยังไม่มีคำสั่ง — เลือกตัวแปรและกด "เพิ่มลงรายการคำสั่ง" ด้านบน (เพิ่มได้หลายคำสั่ง ระบบจะทำตามลำดับ)</div>';return}
+  q.innerHTML=S.tasks.map((t,i)=>{const d=describe(t);
+    return `<div class="qitem"><div class="num ${t.type}">${i+1}</div>
+      <div class="body">${d.title}<br><small>${d.sub}</small></div>
+      <button class="btn sm danger" data-i="${i}">ลบ</button></div>`}).join('');
+  q.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.tasks.splice(+b.dataset.i,1);tasksChanged()});
+}
+function tasksChanged(){
+  const p=runPipeline(S.tasks);
+  S.avail=p.cols; S.availNew=p.created;
+  ['mean','dummy','reverse','label'].forEach(renderPicker);
+  renderQueue();
+  S.result=null; $('save').disabled=true; $('result').classList.add('hidden');
+}
+
+/* ---------- pipeline ---------- */
+function runPipeline(tasks){
+  const data=S.rows.map(r=>Object.assign({},r));
+  const cols=[...S.cols], created=new Set(), changed=new Set(), logs=[];
+  const addCol=n=>{if(!cols.includes(n)) cols.push(n); created.add(n); changed.add(n)};
+  const missing=list=>list.filter(c=>!cols.includes(c));
+
+  tasks.forEach((t,ti)=>{
+    const miss=missing(t.cols);
+    if(miss.length) logs.push({w:true,t:`⚠ คำสั่งที่ ${ti+1}: ไม่พบตัวแปร ${miss.join(', ')} (ข้ามตัวแปรนี้)`});
+    const use=t.cols.filter(c=>cols.includes(c));
+
+    if(t.type==='mean'){
+      if(!use.length) return;
+      let ok=0;
+      data.forEach(r=>{
+        const vals=use.map(c=>toNum(r[c])).filter(v=>v!==null); let out=null;
+        if(vals.length && vals.length>=Math.min(t.minValid,use.length)){
+          const s=vals.reduce((a,b)=>a+b,0); out=round(t.fn==='sum'?s:s/vals.length,t.decimals); ok++;
+        }
+        r[t.name]=out;
+      });
+      addCol(t.name);
+      const fn=t.fn.toUpperCase()+(t.minValid>1?'.'+use.length:'');
+      logs.push({t:`COMPUTE ${t.name} = ${fn}(${use.join(', ')}).\n   → คำนวณได้ ${ok}/${data.length} แถว`});
+    }
+
+    if(t.type==='dummy'){
+      use.forEach(c=>{
+        const uniq=[...new Set(data.map(r=>r[c]).filter(v=>!isBlank(v)).map(v=>String(v).trim()))].sort(cmpVal);
+        let keep=uniq, ref=null;
+        if(t.ref==='first'&&uniq.length>1){ref=uniq[0];keep=uniq.slice(1)}
+        if(t.ref==='last'&&uniq.length>1){ref=uniq[uniq.length-1];keep=uniq.slice(0,-1)}
+        const names=[];
+        keep.forEach(val=>{
+          const n=(c+t.sep+val).replace(/\s+/g,'_');
+          data.forEach(r=>{const v=r[c]; r[n]=isBlank(v)?null:(String(v).trim()===val?1:0)});
+          addCol(n); names.push(n);
+        });
+        logs.push({t:`DUMMY ${c} (${uniq.length} ค่า: ${uniq.join(', ')})${ref!==null?' • กลุ่มอ้างอิง = '+ref:''}\n   → ${names.join(', ')||'(ไม่มีตัวแปรที่สร้าง)'}`});
+      });
+    }
+
+    if(t.type==='reverse'){
+      const outNames=[]; let bad=0;
+      use.forEach(c=>{
+        const n=t.mode==='new'?c+t.suffix:c;
+        data.forEach(r=>{
+          const raw=r[c], x=toNum(raw);
+          if(isBlank(raw)) r[n]=null;
+          else if(x===null||x<t.min||x>t.max){r[n]=null;bad++}
+          else r[n]=t.min+t.max-x;
+        });
+        if(t.mode==='new') addCol(n); else changed.add(n);
+        outNames.push(n);
+      });
+      let map=''; if(Number.isInteger(t.min)&&Number.isInteger(t.max)&&t.max-t.min<=10){for(let v=t.min;v<=t.max;v++) map+=`(${v}=${t.min+t.max-v})`} else map=`(x = ${t.min}+${t.max}-x)`;
+      logs.push({t:`RECODE ${use.join(' ')} ${map}${t.mode==='new'?' INTO '+outNames.join(' '):''}.`});
+      if(bad) logs.push({w:true,t:`   ⚠ พบค่านอกช่วง/ไม่ใช่ตัวเลข ${bad} ค่า → กำหนดเป็นค่าว่าง`});
+    }
+
+    if(t.type==='label'){
+      const dict=new Map(t.map); const numKey=new Map();
+      t.map.forEach(([v,l])=>{const n=toNum(v); if(n!==null) numKey.set(n,l)});
+      const outNames=[]; let unmatched=0;
+      use.forEach(c=>{
+        const n=t.mode==='new'?c+t.suffix:c;
+        data.forEach(r=>{
+          const raw=r[c];
+          if(isBlank(raw)){r[n]=null;return}
+          const k=String(raw).trim(), x=toNum(raw);
+          if(dict.has(k)) r[n]=dict.get(k)===''?null:dict.get(k);
+          else if(x!==null && numKey.has(x)) r[n]=numKey.get(x)===''?null:numKey.get(x);
+          else {unmatched++; r[n]=t.els==='copy'?raw:null}
+        });
+        if(t.mode==='new') addCol(n); else changed.add(n);
+        outNames.push(n);
+      });
+      const q=v=>toNum(v)!==null?v:`'${v}'`;
+      logs.push({t:`RECODE ${use.join(' ')} ${t.map.map(([v,l])=>`(${q(v)}='${l}')`).join('')}${t.els==='copy'?'(ELSE=COPY)':''}${t.mode==='new'?' INTO '+outNames.join(' '):''}.`});
+      if(unmatched) logs.push({w:true,t:`   ⚠ พบค่าที่ไม่ได้กำหนด ${unmatched} ค่า → ${t.els==='copy'?'คงค่าเดิม':'กำหนดเป็นค่าว่าง'}`});
+    }
+  });
+  return {data,cols,created,changed,logs};
+}
+
+/* ---------- process & preview ---------- */
+$('run').onclick=()=>{
+  if(!S.rows.length){toast('กรุณาอัปโหลดไฟล์ก่อน','err');return}
+  if(!S.tasks.length){toast('กรุณาเพิ่มคำสั่งอย่างน้อย 1 รายการ','err');return}
+  S.result=runPipeline(S.tasks);
+  $('save').disabled=false; $('result').classList.remove('hidden');
+  renderResult();
+  $('result').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('ประมวลผลเสร็จสิ้น','ok');
+};
+$('onlynew').onchange=renderResult;
+
+function renderResult(){
+  const R=S.result; if(!R) return;
+  const showCols=$('onlynew').checked?R.cols.filter(c=>R.changed.has(c)):R.cols;
+  $('stats').innerHTML=`<span class="chip">${R.data.length.toLocaleString()} แถว</span>
+    <span class="chip">${R.cols.length} ตัวแปรทั้งหมด</span>
+    <span class="chip" style="background:var(--new-head);color:#5c4400">${R.created.size} ตัวแปรใหม่</span>
+    <span class="chip">${S.tasks.length} คำสั่ง</span>`;
+  const head='<tr><th class="rn">#</th>'+showCols.map(c=>`<th class="${R.changed.has(c)?'newc':''}">${esc(c)}</th>`).join('')+'</tr>';
+  const body=R.data.slice(0,20).map((r,i)=>'<tr><td class="rn">'+(i+1)+'</td>'+showCols.map(c=>{
+    const v=fmt(r[c]); const cls=(R.changed.has(c)?'newc ':'')+(v===null?'na':'');
+    return `<td class="${cls}">${v===null?'·':esc(v)}</td>`}).join('')+'</tr>').join('');
+  $('table').innerHTML='<thead>'+head+'</thead><tbody>'+body+'</tbody>';
+  $('log').innerHTML='<b>Transform Log</b>\n'+R.logs.map(l=>l.w?`<span class="w">${esc(l.t)}</span>`:esc(l.t)).join('\n');
+}
+
+/* ---------- save ---------- */
+$('save').onclick=()=>{
+  const R=S.result; if(!R) return;
+  try{
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(R.data,{header:R.cols}),'Data');
+    const log=[['ลำดับ','คำสั่ง / รายละเอียด']].concat(R.logs.map((l,i)=>[i+1,l.t.replace(/\n\s*/g,' ')]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(log),'Transform_Log');
+    XLSX.writeFile(wb,`${S.fileName}_transformed.xlsx`);
+    toast('บันทึกไฟล์เรียบร้อย','ok');
+  }catch(err){toast('บันทึกไม่สำเร็จ: '+err.message,'err')}
+};
+
+/* ---------- reset ---------- */
+$('reset').onclick=()=>{
+  if(S.rows.length && !confirm('ต้องการล้างข้อมูลและคำสั่งทั้งหมดหรือไม่?')) return;
+  Object.assign(S,{wb:null,fileName:'',rows:[],cols:[],uniq:{},tasks:[],avail:[],availNew:new Set(),result:null});
+  Object.values(S.sel).forEach(s=>s.clear());
+  fileIn.value=''; $('fileinfo').style.display='none';
+  $('step2').classList.add('locked'); $('step3').classList.add('locked');
+  $('result').classList.add('hidden'); $('save').disabled=true; $('onlynew').checked=false;
+  $('mean-name').value=''; resetMapRows(); $('rev-min').value=1; $('rev-max').value=5; revPreview();
+  document.querySelectorAll('.picker .search').forEach(s=>s.value='');
+  ['mean','dummy','reverse','label'].forEach(renderPicker); renderQueue();
+  window.scrollTo({top:0,behavior:'smooth'});
+  toast('รีเซ็ตเรียบร้อย');
+};
+
+renderQueue();
+</script>
+</body>
+</html>
